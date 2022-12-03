@@ -78,3 +78,23 @@ class GetApiDisk(webdriver.Chrome):
         self.close()
         self.quit()
         print("Браузер закрыт")
+
+
+def upload_files(token: str, urls: list) -> None:
+    requests.put("https://cloud-api.yandex.net/v1/disk/resources",
+                 headers={
+                     "Authorization": f"OAuth {token}"
+                 },
+                 params={
+                     "path": "/IMG/"
+                 })
+    for num, url in enumerate(urls):
+        data_upload = requests.post("https://cloud-api.yandex.net/v1/disk/resources/upload",
+                                    headers={
+                                        "Authorization": f"OAuth {token}"
+                                    },
+                                    params={
+                                        "url": url,
+                                        "path": f"/IMG/photo_{num + 1}.png",
+                                        "overwrite": True
+                                    })
