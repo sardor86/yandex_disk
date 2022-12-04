@@ -1,1 +1,1 @@
-from .yandex_disk import GetApiDisk, upload_files
+from .yandex_disk import GetApiDisk, upload_files, check_token

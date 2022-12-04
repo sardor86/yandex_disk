@@ -1,16 +1,22 @@
 from selenium import webdriver
 from selenium.common import NoSuchElementException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import requests
 import json
 
-from config import LOGIN_URL
+from config import LOGIN_URL, BROWSER_SETTINGS
 import time
 
 
 class GetApiDisk(webdriver.Chrome):
     def __init__(self, driver_path: str):
-        super().__init__(executable_path=driver_path)
+        options = Options()
+        options.add_argument('headless')
+        options.add_argument(
+            BROWSER_SETTINGS)
+
+        super().__init__(executable_path=driver_path, chrome_options=options)
         print('Браузер готов')
 
         self.user_name = None
@@ -20,6 +26,7 @@ class GetApiDisk(webdriver.Chrome):
     def get_api(self, user_name: str, user_password: str) -> bool:
         ##########################################################################################################
         # login
+
         self.get(LOGIN_URL)
         time.sleep(2)
         self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]"
@@ -96,5 +103,12 @@ def upload_files(token: str, urls: list) -> None:
                                     params={
                                         "url": url,
                                         "path": f"/IMG/photo_{num + 1}.png",
-                                        "overwrite": True
                                     })
+
+
+def check_token(token: str) -> bool:
+    data_disk = requests.get("https://cloud-api.yandex.net/v1/disk/",
+                             headers={
+                                 "Authorization": f"OAuth {token}"
+                             })
+    return data_disk.status_code == 200

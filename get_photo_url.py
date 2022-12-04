@@ -1,13 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
-from .config import GET_PHOTO_URL_FREEPIK
+
+from config import GET_PHOTO_URL_FREEPIK, BROWSER_SETTINGS
 
 
 def get_url_photo(query: str, page: int) -> list:
     content = requests.get(GET_PHOTO_URL_FREEPIK,
-                           headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) '
-                                                  'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 '
-                                                  'Safari/537.36'},
+                           headers={'User-Agent': BROWSER_SETTINGS},
                            params={"format": "search",
                                    "page": page,
                                    "query": query})
