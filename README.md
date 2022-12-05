@@ -17,8 +17,7 @@ pyinstaller --noconsole --onefile main.py
 ```
 #### the executable is located in the dist folder
 
-## Running a project on linux
-```
-cd yandex_disk_archiver
-python main.py
-```
+## only works in windows x64 and chrome version 107
+
+## Downloads
+Windows: https://disk.yandex.uz/d/WAzuOPygy2Ju2Q
