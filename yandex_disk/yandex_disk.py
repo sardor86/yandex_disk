@@ -1,114 +1,96 @@
-from selenium import webdriver
 from selenium.common import NoSuchElementException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 import requests
 import json
 
-from config import LOGIN_URL, BROWSER_SETTINGS
-import time
+from config import BaseYandexDisk, LOGIN_URL, START_GET_TOKEN_IFRAME_XPATH, START_GET_TOKEN_BUTTON_XPATH,\
+                   LOGIN_USER_NAME_LABEL_XPATH, LOGIN_USER_NAME_BUTTON_XPATH, LOGIN_USER_NAME_ERROR_XPATH,\
+                   LOGIN_USER_PASSWORD_LABEL_XPATH, LOGIN_USER_PASSWORD_BUTTON_XPATH, LOGIN_USER_PASSWORD_ERROR_XPATH,\
+                   USER_TOKEN_IFRAME_XPATH, USER_TOKEN_XPATH
+from time import sleep
 
 
-class GetApiDisk(webdriver.Chrome):
-    def __init__(self, driver_path: str):
-        options = Options()
-        options.add_argument('headless')
-        options.add_argument(
-            BROWSER_SETTINGS)
-
-        super().__init__(executable_path=driver_path, chrome_options=options)
-        print('Браузер готов')
-
-        self.user_name = None
-        self.user_password = None
-        self.disk_api = None
-
-    def get_api(self, user_name: str, user_password: str) -> bool:
-        ##########################################################################################################
-        # login
-
+class YandexDisk(BaseYandexDisk):
+    def get_token_start(self):
         self.get(LOGIN_URL)
-        time.sleep(2)
-        self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]"
-                                    "/div[3]/div/div/div/div[1]/form/div[2]/div/div[2]"
-                                    "/span/input").send_keys(user_name)
-        time.sleep(3)
+        self.switch_to.frame(self.find_element(By.XPATH, START_GET_TOKEN_IFRAME_XPATH))
+        self.find_element(By.XPATH, START_GET_TOKEN_BUTTON_XPATH).click()
+        self.switch_to.default_content()
+        sleep(3)
 
-        self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
-                                    "/div/div/div/div[1]/form/div[4]/button").click()
-        time.sleep(3)
+    def get_token_login(self, user_name: str) -> bool:
+        self.find_element(By.XPATH, LOGIN_USER_NAME_LABEL_XPATH).send_keys(user_name)
+        sleep(3)
+
+        self.find_element(By.XPATH, LOGIN_USER_NAME_BUTTON_XPATH).click()
+        sleep(3)
 
         try:
-            error = self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
-                                                "/div/div/div/div[1]/form/div[2]/div/div[2]/div")
+            self.find_element(By.XPATH, LOGIN_USER_NAME_ERROR_XPATH)
 
             print("Такого аккаунта не существует")
             return False
         except NoSuchElementException:
-            time.sleep(3)
+            self.user_name = user_name
+            sleep(3)
+            return True
 
-        ##################################################################################################
-        # password
+    def get_token_password(self, user_password: str) -> bool:
+        self.find_element(By.XPATH, LOGIN_USER_PASSWORD_LABEL_XPATH).send_keys(user_password)
 
-        self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
-                                    "/div/div/div/form/div[2]/div[1]/span/input").send_keys(user_password)
-
-        self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
-                                    "/div/div/div/form/div[3]/button").click()
-        time.sleep(3)
+        self.find_element(By.XPATH, LOGIN_USER_PASSWORD_BUTTON_XPATH).click()
+        sleep(3)
 
         try:
-            error = self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
-                                                "/div/div/div/form/div[2]/div[1]/div")
+            self.find_element(By.XPATH, LOGIN_USER_PASSWORD_ERROR_XPATH)
             print("Неверный пароль")
             return False
         except NoSuchElementException:
-            time.sleep(2)
+            self.user_password = user_password
+            sleep(2)
+            return True
 
-        self.switch_to.frame(self.find_element(By.XPATH, "/html/body/div[3]/div/div/span/section/div[1]/div[1]"
-                                                         "/div/section/div/div/section/div/div/div/div[1]/div/"
-                                                         "section/div/div/div/div[4]/section/div/div/iframe"))
-
-        self.disk_api = self.find_element(By.XPATH, "/html/body/div/section/div[1]/span/input").get_attribute('value')
-
+    def save_data(self, user_name: str, user_password: str) -> None:
         with open("data.json", "w") as file:
             data = {
                     "user_name": user_name,
                     "user_password": user_password,
-                    "user_token": self.disk_api
+                    "user_token": self.disk_token
                    }
             file.write(json.dumps(data))
 
+    def get_token(self) -> bool:
+        self.switch_to.frame(self.find_element(By.XPATH, USER_TOKEN_IFRAME_XPATH))
+        self.disk_token = self.find_element(By.XPATH, USER_TOKEN_XPATH).get_attribute('value')
+
+        self.save_data(self.user_name, self.user_password)
+
         return True
 
-    def __del__(self):
-        self.close()
-        self.quit()
-        print("Браузер закрыт")
-
-
-def upload_files(token: str, urls: list) -> None:
-    requests.put("https://cloud-api.yandex.net/v1/disk/resources",
-                 headers={
-                     "Authorization": f"OAuth {token}"
-                 },
-                 params={
-                     "path": "/IMG/"
-                 })
-    for num, url in enumerate(urls):
-        data_upload = requests.post("https://cloud-api.yandex.net/v1/disk/resources/upload",
-                                    headers={
+    @staticmethod
+    def upload_files(token: str, urls: list) -> None:
+        requests.put("https://cloud-api.yandex.net/v1/disk/resources",
+                     headers={
+                         "Authorization": f"OAuth {token}"
+                     },
+                     params={
+                         "path": "/IMG/"
+                     })
+        for num, url in enumerate(urls):
+            requests.post(
+                           "https://cloud-api.yandex.net/v1/disk/resources/upload",
+                           headers={
                                         "Authorization": f"OAuth {token}"
                                     },
-                                    params={
+                           params={
                                         "url": url,
                                         "path": f"/IMG/photo_{num + 1}.png",
-                                    })
+                                   })
 
-
-def check_token(token: str) -> bool:
-    data_disk = requests.get("https://cloud-api.yandex.net/v1/disk/",
-                             headers={
-                                 "Authorization": f"OAuth {token}"
-                             })
-    return data_disk.status_code == 200
+    @staticmethod
+    def check_token(token: str) -> bool:
+        data_disk = requests.get("https://cloud-api.yandex.net/v1/disk/",
+                                 headers={
+                                     "Authorization": f"OAuth {token}"
+                                 })
+        return data_disk.status_code == 200

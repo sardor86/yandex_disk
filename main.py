@@ -1,4 +1,4 @@
-from yandex_disk import check_token, GetApiDisk, upload_files
+from yandex_disk import YandexDisk
 from config import BASE_DIR
 from get_photo_url import get_url_photo
 
@@ -23,7 +23,8 @@ kivy.require('2.1.0')
 
 class FloatInput(TextInput):
 
-    pat = re.compile('[^0-9]')
+    pat = re.compile("[^0-9]")
+
     def insert_text(self, substring, from_undo=False):
         pat = self.pat
         if '.' in self.text:
@@ -38,8 +39,10 @@ class FloatInput(TextInput):
 
 class registrationApp(Screen):
     def press_check_account_button(self, value):
-        disk = GetApiDisk(str(BASE_DIR / "drivers/chromedriver.exe"))
-        if disk.get_api(self.user_name.text, self.user_password.text):
+        disk = YandexDisk(str(BASE_DIR / "drivers/chromedriver.exe"))
+        disk.get_token_start()
+        if disk.get_token_login(self.user_name.text) and disk.get_token_password(self.user_password.text):
+            disk.get_token()
             self.process.text = "Вы успешно вошли в свой аккаунт"
             self.manager.transition.direction = 'left'
             self.manager.current = 'upload_files'
@@ -79,7 +82,7 @@ class uploadFileApp(Screen):
         with open("data.json", "r") as file:
             user_data = json.loads(file.read())
 
-        upload_files(user_data["user_token"], urls)
+        YandexDisk.upload_files(user_data["user_token"], urls)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -142,7 +145,7 @@ class mainApp(App):
             with open("data.json", "r") as file:
                 data = json.loads(file.read())
 
-            if check_token(data["user_token"]):
+            if YandexDisk.check_token(data["user_token"]):
                 sm.add_widget(checkAccount(name="check_account"))
         sm.add_widget(registrationApp(name="registration_account"))
 
